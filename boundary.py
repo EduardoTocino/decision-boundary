@@ -1,6 +1,8 @@
+#import libraries
 import pygame,sys
 import numpy as np
 import math
+
 class Neural_Network(object):
     def __init__(self):        
         #Define Hyperparameters
@@ -46,7 +48,7 @@ class Neural_Network(object):
         
         return dJdW1, dJdW2
         
-def drawBoxes():
+def drawBoxes(): #draws 7 colored boxes used for input
 	i = 0
 	for color in colorlist:
 		if i<=2:
@@ -55,7 +57,8 @@ def drawBoxes():
 			pygame.draw.rect(window,color,(20*(i-3),20,20,20))
 		i += 1	
 	pygame.draw.rect(window,(255,255,255),(60,0,40,40))
-def drawFilledBox(colornumber):
+	
+def drawFilledBox(colornumber): #draws box with black border (selected), input 1-7 for colors in colorlist
 	drawBoxes()
 	if colornumber<=2:
 		pygame.draw.rect(window,(0,0,0),(20*colornumber,0,20,20))
@@ -66,12 +69,17 @@ def drawFilledBox(colornumber):
 	else:
 		pygame.draw.rect(window,(0,0,0),(20*(colornumber-3),20,20,20))
 		pygame.draw.rect(window,colorlist[colornumber],(20*(colornumber-3)+2,22,16,16))
-def drawProgressBox(percent):
+		
+def drawProgressBox(percent): #draws run box with percent progress in green
 	drawFilledBox(7)
-	pygame.draw.rect(window, (0,255,0), (62,2,int(percent*36),36))	
+	pygame.draw.rect(window, (0,255,0), (62,2,int(percent*36),36))
+
+#initialise pygame, neural network
 pygame.init()
 NN = Neural_Network()
 window = pygame.display.set_mode((800,600))
+
+#initialise colours
 red = (255,0,0)
 green = (0,255,0)
 blue = (0,0,255)
@@ -79,56 +87,74 @@ yellow = (255,255,0)
 cyan = (0,255,255)
 magenta = (255,0,255)
 colorlist = [red,green,blue,yellow,cyan,magenta]
-poslist = []
-datacolorlist = []
-pointlist = []
+
+poslist = [] #list of data points (input)
+datacolorlist = [] #list of data (output)
+
+pointlist = [] #list of all points in screen
 for i in range(800):
 	for j in range(600):
 		pointlist.append([i/800.,j/600.])
+
 drawBoxes()
-while True:
+
+while True: #main loop
+	
 	pygame.display.update()
-	for event in pygame.event.get():
-		if event.type == 5:
-			mouseX,mouseY = pygame.mouse.get_pos()
-			if mouseX<=100 and mouseY<=40:
-				if mouseX>=60:
+	
+	for event in pygame.event.get(): #every mouse click/keyboard
+		if event.type == 5: #if left click
+			
+			mouseX,mouseY = pygame.mouse.get_pos() #get mouse position
+			
+			if mouseX<=100 and mouseY<=40: # in box space
+				if mouseX>=60: #go box selected
+					
 					drawFilledBox(7)
 					pygame.display.update()
-					X = np.array(poslist)
+					
+					X = np.array(poslist) #create training arrays
 					y = np.array(datacolorlist)
-					for i in range(10000):
-						if i%50 == 0:
+					
+					for i in range(10000): #train the network
+						if i%50 == 0: #show progress every 50 iterations
 							drawProgressBox(i/10000.)
 							pygame.display.update()
 						dJdW1, dJdW2 = NN.costFunctionPrime(X,y)
 						NN.W1 -= dJdW1
 						NN.W2 -= dJdW2
-					pointcolors = NN.forward(np.array(pointlist))
-					for j in range(800):
-						if j%5 == 0:
-							for k in range(len(poslist)):
-								pointx = int(800*poslist[k][0])
+						
+					pixelcolors = NN.forward(np.array(pointlist)) #map each pixel on the screen to a color
+					
+					for j in range(800): #draw each pixel its color
+						if j%5 == 0: #every five rows
+							for k in range(len(poslist)): #draw all the data points over the background
+								pointx = int(800*poslist[k][0]) 
 								pointy = int(600*poslist[k][1])
 								
-								colour = tuple([num*255 for num in datacolorlist[k]])
-								pygame.draw.circle(window,(0,0,0),(pointx,pointy),6)
-								pygame.draw.circle(window,colour,(pointx,pointy),5)
+								datapointcolor = tuple([num*255 for num in datacolorlist[k]])
+								pygame.draw.circle(window,(0,0,0),(pointx,pointy),7) #draw black outline
+								pygame.draw.circle(window,datapointcolor,(pointx,pointy),5) #draw data point
+								
 							drawFilledBox(7)
 							pygame.display.update()
-						for h in range(600):
-							pointcolor = 175*pointcolors[600*j+h]
-							pygame.draw.rect(window,(pointcolor[0],pointcolor[1],pointcolor[2]),(j,h,2,2))
+							
+						for h in range(600): #draw the background
+							pixelcolor = 175*pixelcolors[600*j+h]
+							pygame.draw.rect(window,(pixelcolor[0],pixelcolor[1],pixelcolor[2]),(j,h,2,2)) #draw the color of the pixel
+					
 					drawFilledBox(7)
-				else:
-					colornumber = int(math.floor(mouseX/20.)+3*math.floor(mouseY/20.))
+				else: #if color changed
+					colornumber = int(math.floor(mouseX/20.)+3*math.floor(mouseY/20.)) #find out what color the mouse clicked on
 					drawFilledBox(colornumber)
-					color = colorlist[colornumber]
+					color = colorlist[colornumber] #set the current color
 
-			else:
-				pygame.draw.circle(window,color,(mouseX,mouseY),5)
-				poslist.append([mouseX/800.,mouseY/600.])
+			else: #if data point added
+				pygame.draw.circle(window,color,(mouseX,mouseY),5) #draw data point
+				poslist.append([mouseX/800.,mouseY/600.]) #record data point to be used for training
 				datacolorlist.append([num / 255. for num in list(color)])
-		if event.type == 12:
-			pygame.quit()
+				
+				
+		if event.type == 12: #if quit pressed
+			pygame.quit() #quit
 			sys.exit()
